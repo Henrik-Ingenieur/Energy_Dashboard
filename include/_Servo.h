@@ -64,16 +64,14 @@ void ServoSetup()
 void ServoNewLoadPower(int LoadPwr){
     if (LoadPwr < 0)
         _Load_Power_Deg = 0;
-    if (LoadPwr <= 100)
-        _Load_Power_Deg = map(LoadPwr, 0, 100, 0, 10);
-    else if (LoadPwr <= 250)
-        _Load_Power_Deg = map(LoadPwr, 100, 250, 10, 40);
+    else if (LoadPwr <= 500)
+        _Load_Power_Deg = map(LoadPwr, 0, 500, 0, 30);
     else if (LoadPwr <= 800)
-        _Load_Power_Deg = map(LoadPwr, 250, 800, 40, 60);
+        _Load_Power_Deg = map(LoadPwr, 500, 2000, 30, 60);
     else if (LoadPwr <= 1400)
-        _Load_Power_Deg = map(LoadPwr, 800, 1400, 60, 90);
+        _Load_Power_Deg = map(LoadPwr, 2000, 8000, 60, 90);
     else if (LoadPwr <= 4000)
-        _Load_Power_Deg = map(LoadPwr, 1400, 4000, 90, 120);
+        _Load_Power_Deg = map(LoadPwr, 8000, 12000, 90, 120);
     else
         _Load_Power_Deg = 120;
 
@@ -87,16 +85,14 @@ void ServoNewLoadPower(int LoadPwr){
 void ServoNewCurPvPower(int PvPwr){
     if (PvPwr < 0)
         _cur_pv_prod_Deg = 120;
-    else if (PvPwr <= 100)
-        _cur_pv_prod_Deg = map(PvPwr, 0, 100, 120, 87);
     else if (PvPwr <= 500)
-        _cur_pv_prod_Deg = map(PvPwr, 100, 500, 86, 66); 
+        _cur_pv_prod_Deg = map(PvPwr, 0, 500, 120, 90); 
     else if (PvPwr <= 1500)
-        _cur_pv_prod_Deg = map(PvPwr, 500, 1500, 65, 45);
+        _cur_pv_prod_Deg = map(PvPwr, 500, 2000, 90, 60);
     else if (PvPwr <= 1500)
-        _cur_pv_prod_Deg = map(PvPwr, 1500, 4000, 44, 25);
+        _cur_pv_prod_Deg = map(PvPwr, 2000, 8000, 60, 30);
     else if (PvPwr <= 11000)
-        _cur_pv_prod_Deg = map(PvPwr, 4000, 11000, 24, 0);
+        _cur_pv_prod_Deg = map(PvPwr, 8000, 12000, 30, 0);
     else
         _cur_pv_prod_Deg = 0;
     
