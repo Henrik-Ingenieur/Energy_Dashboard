@@ -10,9 +10,14 @@
 */
 
 #include "_config.h"
+#include <Preferences.h>
 #include <ESP32Servo.h>     //   Lib:  ESP32Servo@^1.2.0
 #include <arduino-timer.h>          //  https://github.com/contrem/arduino-timer/blob/master/README.md       https://github.com/khoih-prog/TimerInterrupt
+#include <string>
 
+
+
+Preferences prefs;      // flash storage object
 auto StepTimer = timer_create_default(); // create a timer with default settings
 
 int pos = 0;    // variable to store the servo position
@@ -32,16 +37,20 @@ int _delay = 20;    //< delay to move
 int _StepSize = 1;        //< stepsize to get to the next position
 int _swp = 0;       //< sweep dis/en-able
 
-int _Load_Power_Deg;     //< global: last Load Power from MQTT in degree
-int _Battery_level_Deg;  //< global: last Battery Power info from MQTT in degree
-int _cur_pv_prod_Deg;    //< global: last cur_pv_prod from MQTT in degree
-int _Load_Power_wayPoint    = 0;    //< global: last Load Power way point
-int _Battery_level_wayPoint = 0;    //< global: last Battery Power way point
-int _cur_pv_prod_wayPoint   = 0;    //< global: last cur_pv_prod way point
+int _Load_Power_Deg    = INVALID;  //< global: last Load Power from MQTT in degree
+int _Battery_level_Deg = INVALID;  //< global: last Battery Power info from MQTT in degree
+int _cur_pv_prod_Deg   = INVALID;  //< global: last cur_pv_prod from MQTT in degree
+int _Load_Power_wayPoint    = INVALID;  //< global: last Load Power way point
+int _Battery_level_wayPoint = INVALID;  //< global: last Battery Power way point
+int _cur_pv_prod_wayPoint   = INVALID;  //< global: last cur_pv_prod way point
 
 boolean boSweep = false;
 bool TIMER_Servo_function_to_call(void *argument );
 void vSweep(void);
+
+int16_t i16ServoLoadPwrOffset = 0;
+int16_t i16ServoBatteryLevelOffset = 0;
+int16_t i16ServoLCurPvProdOffset = 0;
 
 void ServoSetup()
 {   // standard 50 hz servo
@@ -59,6 +68,22 @@ void ServoSetup()
     ESP32PWM::allocateTimer(3);
     // setup timer with callback function to call.
     StepTimer.every(_delay, TIMER_Servo_function_to_call);
+
+    // prepare calibration data
+    prefs.begin("Calibre", true);   // open calibration in write protected (name space name limit to 10 chars)
+
+    // get calibration offsets from flash
+    i16ServoLoadPwrOffset = prefs.getShort(LoadPwrOffset, 0);
+    i16ServoBatteryLevelOffset = prefs.getShort(BatteryLevelOffset, 0);
+    i16ServoLCurPvProdOffset = prefs.getShort(CurPvProdOffset, 0);
+    prefs.end();    // close calibration file
+#if (ENABLE_UART == 1)
+    Serial.print("Read calibration data for Load, PV, Bat: ");
+    std::string str;
+    str = std::to_string(i16ServoLoadPwrOffset) + ", "+ std::to_string(i16ServoLCurPvProdOffset) + ", "+ std::to_string(i16ServoBatteryLevelOffset);
+    Serial.println(str.c_str());
+#endif
+
 }
 
 void ServoNewLoadPower(int LoadPwr){
@@ -66,11 +91,11 @@ void ServoNewLoadPower(int LoadPwr){
         _Load_Power_Deg = 0;
     else if (LoadPwr <= 500)
         _Load_Power_Deg = map(LoadPwr, 0, 500, 0, 30);
-    else if (LoadPwr <= 800)
+    else if (LoadPwr <= 2000)
         _Load_Power_Deg = map(LoadPwr, 500, 2000, 30, 60);
-    else if (LoadPwr <= 1400)
+    else if (LoadPwr <= 8000)
         _Load_Power_Deg = map(LoadPwr, 2000, 8000, 60, 90);
-    else if (LoadPwr <= 4000)
+    else if (LoadPwr <= 12000)
         _Load_Power_Deg = map(LoadPwr, 8000, 12000, 90, 120);
     else
         _Load_Power_Deg = 120;
@@ -117,7 +142,8 @@ void ServoNewBatLvl(int BatLvl){
 }
 
 int _iUpdateServoPos(int _TargetPos, int &wayPoint){
-    if (wayPoint != _TargetPos){
+    if ((wayPoint != _TargetPos) &&
+        (wayPoint != INVALID)){
         int16_t i16Diff = _TargetPos - wayPoint;
 
         if (i16Diff >= _StepSize)
@@ -127,6 +153,9 @@ int _iUpdateServoPos(int _TargetPos, int &wayPoint){
         else
             wayPoint = _TargetPos;
     }
+    else{
+        wayPoint = _TargetPos;
+    }
     return wayPoint;
 }
 
@@ -135,17 +164,17 @@ bool TIMER_Servo_function_to_call(void *argument ) {
     bool boRetval = false;
 
     if (_Load_Power_wayPoint != _Load_Power_Deg){
-        Servo_LoadPwr.write(_iUpdateServoPos(_Load_Power_Deg, _Load_Power_wayPoint)); // sets the servo position according to the scaled value
+        Servo_LoadPwr.write(_iUpdateServoPos(_Load_Power_Deg, _Load_Power_wayPoint) + i16ServoLoadPwrOffset); // sets the servo position according to the scaled value
         delay(15);  // waits for the servo to get there
         boRetval = true; // continue
     }
     if (_Battery_level_wayPoint != _Battery_level_Deg){
-        Servo_BatteryLevel.write(_iUpdateServoPos(_Battery_level_Deg, _Battery_level_wayPoint)); // sets the servo position according to the scaled value
+        Servo_BatteryLevel.write(_iUpdateServoPos(_Battery_level_Deg, _Battery_level_wayPoint) + i16ServoBatteryLevelOffset); // sets the servo position according to the scaled value
         delay(15);  // waits for the servo to get there
         boRetval = true; // continue
     }
     if (_cur_pv_prod_wayPoint != _cur_pv_prod_Deg){
-        Servo_CurPvProd.write(_iUpdateServoPos(_cur_pv_prod_Deg, _cur_pv_prod_wayPoint)); // sets the servo position according to the scaled value
+        Servo_CurPvProd.write(_iUpdateServoPos(_cur_pv_prod_Deg, _cur_pv_prod_wayPoint) + i16ServoLCurPvProdOffset); // sets the servo position according to the scaled value
         delay(15);  // waits for the servo to get there
         Serial.print("PvPwr wayPnt: ");
         Serial.println(_cur_pv_prod_wayPoint);
@@ -181,6 +210,14 @@ void vSweep(void)
         Servo_LoadPwr.write(pos);    // tell servo to go to position in variable 'pos'
         delay(_delay);             // waits 15ms for the servo to reach the position
     }    
+}
+
+void writeCalibrationData(const char* key, int16_t value)
+{
+    prefs.begin("Calibre", false);   // open calibration in read/write mode (name space name limit to 10 chars)
+    // write calibration offsets to flash
+    prefs.putShort(key, value);
+    prefs.end();    // close calibration file
 }
 
 #ifdef SERVO_TEST

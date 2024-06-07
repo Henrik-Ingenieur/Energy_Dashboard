@@ -46,6 +46,12 @@ const uint8_t mqtt_Deye_qos = 0;   /* only "0" supported */
 #define MQTT_TST_Servo_delay  "test/dashboard/delay"
 #define MQTT_TST_Servo_sz     "test/dashboard/sz"
 #define MQTT_TST_Servo_swp    "test/dashboard/swp"
+
+#define LoadPwrOffset       "LdPwrO"
+#define BatteryLevelOffset  "BatLvlO"
+#define CurPvProdOffset     "PvPrdO"
+
+#define MQTT_CALIB_Servo      "config/dashboard/calib"
 #define MQTT_Load_Power       "homeassistant/sensor/Load_power"
 #define MQTT_Battery_level    "homeassistant/sensor/Battery_level"
 #define MQTT_cur_pv_prod      "homeassistant/sensor/current_pv_prod_total"
@@ -61,6 +67,7 @@ const uint8_t mqtt_Deye_qos = 0;   /* only "0" supported */
 #define MQTT_Shelly_Total_3_Register_String "shellies/shellyem3-C8C9A316D608/emeter/2/total"
 #define MQTT_Shelly_TotalRet_3_Register_String "shellies/shellyem3-C8C9A316D608/emeter/2/total_returned"
 
+#define INVALID 0xFFFF
 /*
    ESP8266     https://docs.espressif.com/projects/esptool/en/latest/esp8266/advanced-topics/boot-mode-selection.html#boot-mode
 

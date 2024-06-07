@@ -24,6 +24,7 @@ typedef enum enTstServo {
     enServo_delay,//< delay to move 
     enServo_sz,   //< stepsite to get to the next position
     enServo_swp,  //< sweep dis/en-able
+    enMqttCalib_Servos,        //< calibrate the servos
     enMqttData_Load_Power,     //< watts consumed in-house
     enMqttData_Battery_level,  //< battery charging level in percent
     enMqttData_cur_pv_prod     //< sweep dis/en-able
@@ -50,6 +51,10 @@ extern volatile uint8_t u8Blink;
 extern char msg[50];
 extern char msg_rx[11];
 extern long msg_rx_len;
+extern int16_t i16ServoLoadPwrOffset;
+extern int16_t i16ServoBatteryLevelOffset;
+extern int16_t i16ServoLCurPvProdOffset;
+
 int _Load_Power;    //< global: last Load Power from MQTT
 int _Battery_level;    //< global: last Battery Power info from MQTT
 int _cur_pv_prod;    //< global: last cur_pv_prod from MQTT
@@ -59,6 +64,7 @@ extern void Servotest(tenTstServo msgType, int iVal);
 extern void ServoNewLoadPower(int LoadPwr);
 extern void ServoNewCurPvPower(int PvPwr);
 extern void ServoNewBatLvl(int BatLvl);
+extern void writeCalibrationData(const char* key, int16_t value);
 
 //MQTT messages
 char msg[50];
@@ -71,6 +77,7 @@ ESPPubSubClientWrapper MQTT_client(mqtt_server, mqtt_servPort);
 void MQTT_Callback_connectSuccess(uint16_t count);
 void MQTT_Callback_disconnect(uint16_t count);
 void MQTT_RxCallback_DtuAcPower(tenTstServo msgType, byte *payload, unsigned int length);
+void MQTT_RxCallback_ServoCalib(tenTstServo msgType, byte *payload, unsigned int length);
 void callback(char* topic, byte* payload, unsigned int length);
 
 void MQTT_Pub_RX_msg(void);
@@ -119,6 +126,8 @@ void MQTT_vSetupMQTT_Register(void)
     MQTT_client.on( MQTT_TST_Servo_delay, [](char *topic, byte * payload, unsigned int length) { MQTT_RxCallback_DtuAcPower(enServo_delay, payload, length);});
     MQTT_client.on( MQTT_TST_Servo_sz,    [](char *topic, byte * payload, unsigned int length) { MQTT_RxCallback_DtuAcPower(enServo_sz,    payload, length);});
     MQTT_client.on( MQTT_TST_Servo_swp,   [](char *topic, byte * payload, unsigned int length) { MQTT_RxCallback_DtuAcPower(enServo_swp,   payload, length);});
+
+    MQTT_client.on( MQTT_CALIB_Servo,     [](char *topic, byte * payload, unsigned int length) { MQTT_RxCallback_ServoCalib(enMqttCalib_Servos,       payload, length);});
 
     MQTT_client.on( MQTT_Load_Power,      [](char *topic, byte * payload, unsigned int length) { MQTT_RxCallback_DtuAcPower(enMqttData_Load_Power,    payload, length);});
     MQTT_client.on( MQTT_Battery_level,   [](char *topic, byte * payload, unsigned int length) { MQTT_RxCallback_DtuAcPower(enMqttData_Battery_level, payload, length);});
@@ -228,6 +237,55 @@ void MQTT_RxCallback_DtuAcPower(tenTstServo msgType, byte *payload, unsigned int
     };
     if (boDataUpdate)
         vNewMqttData();
+}
+
+/**
+    @brief Callback for Mqtt servo calibration packages
+    payload only valid in callback
+
+    @param payload   Data received,  only valid in callback
+    @param length  Lenght of data received
+*/
+void MQTT_RxCallback_ServoCalib(tenTstServo msgType, byte *payload, unsigned int length)
+{
+    memcpy(&msg_rx, payload, length); // hier ok, String
+    msg_rx_len = length;              // data to global buff
+    // Convert the payload
+    payload[length] = '\0'; // Add a NULL to the end of the char* to make it a string.      kommt als   0.0
+    if(payload[0] >= 'b' && payload[0]<='p'){
+        // only servo like b= battery, l=load, p=PV are supported
+        int aNumber = atoi((char *)&payload[2]);
+
+        // process the given data
+        switch(payload[0]){
+            case 'l':
+                writeCalibrationData(LoadPwrOffset, aNumber);
+                i16ServoLoadPwrOffset = aNumber;
+                #if (ENABLE_UART == 1)
+                    Serial.print("calibrate LoadPower to ");
+                    Serial.println(aNumber);
+                #endif
+                break;
+            case 'b':
+                writeCalibrationData(BatteryLevelOffset, aNumber);
+                i16ServoBatteryLevelOffset = aNumber;
+                #if (ENABLE_UART == 1)
+                    Serial.print("calibrate BatteryLevelOffset to ");
+                    Serial.println(aNumber);
+                #endif
+                break;
+            case 'p':
+                writeCalibrationData(CurPvProdOffset, aNumber);
+                i16ServoLCurPvProdOffset = aNumber;
+                #if (ENABLE_UART == 1)
+                    Serial.print("calibrate CurPvProdOffset to ");
+                    Serial.println(aNumber);
+                #endif
+                break;
+            default:
+                break;
+        };
+    }
 }
 
 void callback(char* topic, byte* payload, unsigned int length) {
