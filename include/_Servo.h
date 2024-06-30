@@ -37,9 +37,9 @@ int _delay = 20;    //< delay to move
 int _StepSize = 1;        //< stepsize to get to the next position
 int _swp = 0;       //< sweep dis/en-able
 
-int _Load_Power_Deg    = INVALID;  //< global: last Load Power from MQTT in degree
-int _Battery_level_Deg = INVALID;  //< global: last Battery Power info from MQTT in degree
-int _cur_pv_prod_Deg   = INVALID;  //< global: last cur_pv_prod from MQTT in degree
+int _Load_Power_Deg         = INVALID;  //< global: last Load Power from MQTT in degree
+int _Battery_level_Deg      = INVALID;  //< global: last Battery Power info from MQTT in degree
+int _cur_pv_prod_Deg        = INVALID;  //< global: last cur_pv_prod from MQTT in degree
 int _Load_Power_wayPoint    = INVALID;  //< global: last Load Power way point
 int _Battery_level_wayPoint = INVALID;  //< global: last Battery Power way point
 int _cur_pv_prod_wayPoint   = INVALID;  //< global: last cur_pv_prod way point
@@ -112,12 +112,12 @@ void ServoNewCurPvPower(int PvPwr){
         _cur_pv_prod_Deg = 120;
     else if (PvPwr <= 500)
         _cur_pv_prod_Deg = map(PvPwr, 0, 500, 120, 90); 
-    else if (PvPwr <= 1500)
+    else if (PvPwr <= 2000)
         _cur_pv_prod_Deg = map(PvPwr, 500, 2000, 90, 60);
-    else if (PvPwr <= 1500)
+    else if (PvPwr <= 8000)
         _cur_pv_prod_Deg = map(PvPwr, 2000, 8000, 60, 30);
-    else if (PvPwr <= 11000)
-        _cur_pv_prod_Deg = map(PvPwr, 8000, 12000, 30, 0);
+    else if (PvPwr <= 12000)
+        _cur_pv_prod_Deg = map(PvPwr, 8000, 12000, 30, 10);
     else
         _cur_pv_prod_Deg = 0;
     
